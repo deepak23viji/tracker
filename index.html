@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enhanced Assignment Tracker Agent</title>
+
+<style>
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #eef2f5;
+    padding: 20px;
+}
+h1 { text-align: center; color: #2c3e50; }
+.container { max-width: 1000px; margin: auto; }
+
+.card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+input, select, button {
+    padding: 10px;
+    margin: 5px 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+button {
+    background: #3498db;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover { background: #2980b9; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th { background: #34495e; color: white; }
+th, td { padding: 10px; text-align: center; border-bottom: 1px solid #ddd; }
+
+.badge-pending { color: #e67e22; font-weight: bold; }
+.badge-done { color: #27ae60; font-weight: bold; }
+
+.priority-high { color: red; font-weight: bold; }
+.priority-medium { color: orange; font-weight: bold; }
+.priority-low { color: green; font-weight: bold; }
+
+.agent {
+    background: #fff4e5;
+    border-left: 6px solid #f39c12;
+    padding: 15px;
+}
+
+#search { margin-bottom: 10px; }
+</style>
+</head>
+
+<body>
+
+<h1>📚 Enhanced Assignment Tracker Agent</h1>
+
+<div class="container">
+
+<!-- ADD ASSIGNMENT -->
+<div class="card">
+<h3>Add New Assignment</h3>
+<input id="title" placeholder="Assignment Title">
+<input id="subject" placeholder="Subject">
+<input type="date" id="due">
+<select id="priority">
+    <option value="High">High Priority</option>
+    <option value="Medium">Medium Priority</option>
+    <option value="Low">Low Priority</option>
+</select>
+<button onclick="addAssignment()">Add Assignment</button>
+</div>
+
+<!-- SEARCH & FILTER -->
+<div class="card">
+<h3>Search / Filter</h3>
+<input id="search" placeholder="Search by Title or Subject" oninput="render()">
+<select id="statusFilter" onchange="render()">
+    <option value="All">All Status</option>
+    <option value="Pending">Pending</option>
+    <option value="Completed">Completed</option>
+</select>
+<button onclick="clearCompleted()">Clear Completed Assignments</button>
+</div>
+
+<!-- ASSIGNMENTS LIST -->
+<div class="card">
+<h3>Assignments Overview</h3>
+<table>
+<thead>
+<tr>
+    <th>Title</th>
+    <th>Subject</th>
+    <th>Due Date</th>
+    <th>Priority</th>
+    <th>Status</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody id="assignmentList"></tbody>
+</table>
+</div>
+
+<!-- AGENT -->
+<div class="card agent">
+<h3>🤖 Assignment Agent Alerts</h3>
+<div id="agentAlerts"></div>
+</div>
+
+</div>
+
+<script>
+let assignments = JSON.parse(localStorage.getItem("assignments")) || [];
+
+function save() {
+    localStorage.setItem("assignments", JSON.stringify(assignments));
+}
+
+function addAssignment() {
+    if(!title.value || !subject.value || !due.value) return alert("Fill all fields");
+
+    assignments.push({
+        id: Date.now(),
+        title: title.value,
+        subject: subject.value,
+        due: due.value,
+        priority: priority.value,
+        status: "Pending"
+    });
+
+    title.value = subject.value = due.value = "";
+    save();
+    render();
+}
+
+function markComplete(id) {
+    assignments = assignments.map(a =>
+        a.id === id ? { ...a, status: "Completed" } : a
+    );
+    save();
+    render();
+}
+
+function clearCompleted() {
+    assignments = assignments.filter(a => a.status !== "Completed");
+    save();
+    render();
+}
+
+function render() {
+    const search = document.getElementById("search").value.toLowerCase();
+    const status = document.getElementById("statusFilter").value;
+
+    assignmentList.innerHTML = "";
+
+    assignments
+        .filter(a =>
+            (status === "All" || a.status === status) &&
+            (a.title.toLowerCase().includes(search) ||
+             a.subject.toLowerCase().includes(search))
+        )
+        .forEach(a => {
+            assignmentList.innerHTML += `
+            <tr>
+                <td>${a.title}</td>
+                <td>${a.subject}</td>
+                <td>${a.due}</td>
+                <td class="priority-${a.priority.toLowerCase()}">${a.priority}</td>
+                <td class="${a.status === "Pending" ? "badge-pending" : "badge-done"}">${a.status}</td>
+                <td>
+                    ${a.status === "Pending"
+                    ? `<button onclick="markComplete(${a.id})">Complete</button>`
+                    : ""}
+                </td>
+            </tr>`;
+        });
+
+    runAgent();
+}
+
+function runAgent() {
+    const today = new Date().toISOString().split("T")[0];
+    const dueToday = assignments.filter(a =>
+        a.due === today && a.status === "Pending"
+    );
+
+    agentAlerts.innerHTML = dueToday.length
+        ? dueToday.map(a => `⚠ ${a.title} is due today`).join("<br>")
+        : "No urgent assignments 🎉";
+}
+
+render();
+</script>
+
+</body>
+</html>
